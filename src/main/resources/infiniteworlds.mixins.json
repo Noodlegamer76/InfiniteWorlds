@@ -13,6 +13,7 @@
   ],
   "minVersion": "0.8",
   "mixins": [
+    "BlockCollisionsMixin",
     "ChunkAccessMixin",
     "LevelMixin"
   ]
