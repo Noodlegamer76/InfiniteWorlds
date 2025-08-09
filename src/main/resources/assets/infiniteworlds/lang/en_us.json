@@ -1,0 +1,13 @@
+{
+  "itemGroup.infiniteworlds": "Example Mod Tab",
+  "block.infiniteworlds.example_block": "Example Block",
+  "item.infiniteworlds.example_item": "Example Item",
+
+  "infiniteworlds.configuration.title": "Infinite Worlds Configs",
+  "infiniteworlds.configuration.section.infiniteworlds.common.toml": "Infinite Worlds Configs",
+  "infiniteworlds.configuration.section.infiniteworlds.common.toml.title": "Infinite Worlds Configs",
+  "infiniteworlds.configuration.items": "Item List",
+  "infiniteworlds.configuration.logDirtBlock": "Log Dirt Block",
+  "infiniteworlds.configuration.magicNumberIntroduction": "Magic Number Text",
+  "infiniteworlds.configuration.magicNumber": "Magic Number"
+}

@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "package": "com.noodlegamer76.infiniteworlds.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "infiniteworld.refmap.json",
+  "client": [
+    "LevelRendererMixin",
+    "RenderChunkMixin",
+    "RenderChunkRegionMixin",
+    "RenderRegionCacheMixin",
+    "ViewAreaMixin",
+    "accessor.LevelRendererAccessor"
+  ],
+  "minVersion": "0.8",
+  "mixins": [
+    "ChunkAccessMixin",
+    "LevelMixin"
+  ]
+}
