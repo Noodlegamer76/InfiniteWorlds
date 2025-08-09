@@ -8,7 +8,7 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 public class FillChunk {
 
     public static void fillChunkWithDirt(LevelChunk chunk) {
-        BlockState dirt = Blocks.DIRT.defaultBlockState();
+        BlockState dirt = Blocks.GREEN_STAINED_GLASS.defaultBlockState();
 
         LevelChunkSection[] sections = chunk.getSections();
         for (LevelChunkSection section : sections) {
@@ -17,11 +17,11 @@ public class FillChunk {
             for (int x = 0; x < 16; x++) {
                 for (int y = 0; y < 16; y++) {
                     for (int z = 0; z < 16; z++) {
-                        if (y == 0) {
+                        if (y == 0 || y == 15) {
                             section.setBlockState(x, y, z, Blocks.SANDSTONE_SLAB.defaultBlockState(), false);
                             continue;
                         }
-                        if (Math.random() < 0.15) {
+                        if (Math.random() < 0.05) {
                             section.setBlockState(x, y, z, dirt, false);
                         }
                         else {

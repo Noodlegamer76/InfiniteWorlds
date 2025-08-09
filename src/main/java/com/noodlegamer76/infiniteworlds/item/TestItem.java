@@ -19,6 +19,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class TestItem extends Item {
     public TestItem(Properties properties) {
         super(properties);
@@ -29,16 +32,18 @@ public class TestItem extends Item {
         if (!level.isClientSide() && !player.isShiftKeyDown()) {
             StackedChunkStorage.clear();
             StackedChunkRenderer.clear();
-            for (int x = 0; x < 3; x++) {
-                for (int y = 0; y < 3; y++) {
-                    for (int z = 0; z < 3; z++) {
-                        StackedChunk chunk = StackedChunkStorage.getOrCreate(level, new StackedChunkPos(x, y + 20, z));
+            List<StackedChunk> chunks = new ArrayList<>();
+            for (int x = 0; x < 7; x++) {
+                for (int y = 0; y < 40; y++) {
+                    for (int z = 0; z < 7; z++) {
+                        StackedChunk chunk = StackedChunkStorage.getOrCreate(level, new StackedChunkPos(x, y + 1000, z));
                         FillChunk.fillChunkWithDirt(chunk);
-                        StackedChunkPayload payload = new StackedChunkPayload(chunk);
-                        ((ServerPlayer) player).connection.send(payload);
+                        chunks.add(chunk);
                     }
                 }
             }
+            StackedChunkPayload payload = new StackedChunkPayload(chunks);
+            ((ServerPlayer) player).connection.send(payload);
         }
         if (level.isClientSide() && player.isShiftKeyDown()) {
             System.out.println(StackedChunkStorage.getChunks().size());

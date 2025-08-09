@@ -2,27 +2,44 @@ package com.noodlegamer76.infiniteworlds.network.stackedchunk;
 
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
+import io.netty.buffer.Unpooled;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class StackedChunkLoader {
 
-    public static StackedChunk loadChunkFromPayload(ClientLevel clientLevel, StackedChunkPayload payload) {
-        int chunkX = payload.x;
-        int chunkY = payload.y;
-        int chunkZ = payload.z;
-
-        StackedChunkPos chunkPos = new StackedChunkPos(chunkX, chunkY, chunkZ);
-        StackedChunk chunk = new StackedChunk(clientLevel, chunkPos);
-
+    public static List<StackedChunk> loadChunksFromPayload(ClientLevel clientLevel, StackedChunkPayload payload) {
         FriendlyByteBuf buffer = payload.getChunkDataBuffer();
+        int count = buffer.readVarInt();
 
-        LevelChunkSection[] sections = chunk.getSections();
-        for (int i = 0; i < sections.length; i++) {
-            sections[i].read(buffer);
+        List<StackedChunk> chunks = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            int x = buffer.readInt();
+            int y = buffer.readInt();
+            int z = buffer.readInt();
+
+            int length = buffer.readVarInt();
+            byte[] chunkData = new byte[length];
+            buffer.readBytes(chunkData);
+
+            StackedChunkPos pos = new StackedChunkPos(x, y, z);
+            StackedChunk chunk = new StackedChunk(clientLevel, pos);
+
+            FriendlyByteBuf chunkBuffer = new FriendlyByteBuf(Unpooled.wrappedBuffer(chunkData));
+            LevelChunkSection[] sections = chunk.getSections();
+            for (int j = 0; j < sections.length; j++) {
+                sections[j].read(chunkBuffer);
+            }
+            chunkBuffer.release();
+
+            chunks.add(chunk);
         }
 
-        return chunk;
+        return chunks;
     }
+
 }

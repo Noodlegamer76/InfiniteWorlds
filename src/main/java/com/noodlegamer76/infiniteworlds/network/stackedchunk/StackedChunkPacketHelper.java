@@ -7,27 +7,36 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 public class StackedChunkPacketHelper {
 
     public static byte[] serializeChunkData(StackedChunk chunk) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        return serializeChunkData(List.of(chunk));
+    }
 
-        try {
-            // Iterate through our chunk's sections and write each one to the buffer.
+    public static byte[] serializeChunkData(List<StackedChunk> chunks) {
+        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        buffer.writeVarInt(chunks.size());
+
+        for (StackedChunk chunk : chunks) {
+            buffer.writeInt(chunk.getPos().x);
+            buffer.writeInt(chunk.getPos().y);
+            buffer.writeInt(chunk.getPos().z);
+
+            FriendlyByteBuf chunkBuffer = new FriendlyByteBuf(Unpooled.buffer());
             for (LevelChunkSection section : chunk.getSections()) {
-                section.write(buffer);
+                section.write(chunkBuffer);
             }
-            // Copy the data from the buffer to the byte array
-            buffer.getBytes(0, byteArrayOutputStream, buffer.writerIndex());
-            return byteArrayOutputStream.toByteArray();
-        } catch (IOException e) {
-            // Handle any potential IO errors
-            e.printStackTrace();
-            return new byte[0];
-        } finally {
-            buffer.release();
+
+            buffer.writeVarInt(chunkBuffer.readableBytes());
+            buffer.writeBytes(chunkBuffer);
+            chunkBuffer.release();
         }
+
+        byte[] result = new byte[buffer.readableBytes()];
+        buffer.getBytes(buffer.readerIndex(), result);
+        buffer.release();
+        return result;
     }
 }

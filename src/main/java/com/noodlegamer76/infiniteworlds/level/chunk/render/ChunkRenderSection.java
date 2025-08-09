@@ -8,11 +8,13 @@ import net.minecraft.client.renderer.chunk.RenderChunkRegion;
 import net.minecraft.client.renderer.chunk.RenderRegionCache;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.core.SectionPos;
+import net.minecraft.world.phys.Vec3;
 
 public class ChunkRenderSection {
     private final StackedChunkPos pos;
     private final SectionRenderDispatcher.RenderSection renderSection;
     private boolean removed = false;
+    private double cachedDistance;
 
     public ChunkRenderSection(StackedChunkPos pos, SectionRenderDispatcher.RenderSection renderSection) {
         this.pos = pos;
@@ -51,4 +53,15 @@ public class ChunkRenderSection {
     public void setRemoved(boolean removed) {
         this.removed = removed;
     }
+
+    public void updateDistance(Vec3 camPos) {
+        cachedDistance = getPos().getWorldPosition()
+                .getBottomCenter()
+                .distanceToSqr(camPos);
+    }
+
+    public double getCachedDistance() {
+        return cachedDistance;
+    }
+
 }

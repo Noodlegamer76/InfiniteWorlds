@@ -5,6 +5,7 @@ import com.noodlegamer76.infiniteworlds.InfiniteWorlds;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import com.noodlegamer76.infiniteworlds.mixin.accessor.LevelRendererAccessor;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -13,16 +14,20 @@ import net.minecraft.client.renderer.chunk.RenderRegionCache;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
 
 public class StackedChunkRenderer {
+    private static final Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
     private static final Map<StackedChunkPos, ChunkRenderSection> stackedSections = new HashMap<>();
-    private static final Queue<ChunkRenderSection> dirtySections = new LinkedList<>();
+    private static final PriorityQueue<ChunkRenderSection> dirtySections =
+            new PriorityQueue<>(Comparator.comparingDouble(ChunkRenderSection::getCachedDistance));
     private static final List<ChunkRenderSection> removedSections = new ArrayList<>();
 
     private static SectionRenderDispatcher dispatcher;
     private static ClientLevel level;
+    private static Vec3 lastCameraPos = Vec3.ZERO;
 
     public static void init(ClientLevel level) {
         if (dispatcher == null) {
@@ -41,6 +46,7 @@ public class StackedChunkRenderer {
         for (ChunkRenderSection section : stackedSections.values()) {
             section.setRemoved(true);
             removedSections.add(section);
+            dirtySections.remove(section);
         }
     }
 
@@ -61,6 +67,20 @@ public class StackedChunkRenderer {
 
     public static void processChunks() {
         StackedChunkRenderer.removeAllRemovedChunks();
+
+        Vec3 camPos = camera.getPosition();
+        if (!camPos.equals(lastCameraPos)) {
+            lastCameraPos = camPos;
+
+            List<ChunkRenderSection> tempList = new ArrayList<>(dirtySections);
+            for (ChunkRenderSection section : tempList) {
+                section.updateDistance(camPos);
+            }
+            dirtySections.clear();
+            dirtySections.addAll(tempList);
+
+        }
+
         StackedChunkRenderer.rebuildNextDirtyChunk();
     }
 
@@ -81,12 +101,14 @@ public class StackedChunkRenderer {
     }
 
     public static void removeAllRemovedChunks() {
-        for (ChunkRenderSection section : removedSections) {
+        List<ChunkRenderSection> sectionsToRemove = new ArrayList<>(removedSections);
+        removedSections.clear();
+
+        for (ChunkRenderSection section : sectionsToRemove) {
             dirtySections.remove(section);
             stackedSections.remove(section.getPos());
             section.close();
         }
-        removedSections.clear();
     }
 
     public static void addStackedChunk(StackedChunk chunk) {

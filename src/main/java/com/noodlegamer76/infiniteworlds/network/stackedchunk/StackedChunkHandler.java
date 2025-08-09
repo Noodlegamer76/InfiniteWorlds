@@ -7,13 +7,17 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+import java.util.List;
+
 
 public class StackedChunkHandler {
 
     public static void handle(StackedChunkPayload payload, IPayloadContext context) {
-        StackedChunk levelChunk = StackedChunkLoader.loadChunkFromPayload(Minecraft.getInstance().level, payload);
-        StackedChunkStorage.put(levelChunk);
-        StackedChunkRenderer.addStackedChunk(levelChunk);
+        List<StackedChunk> levelChunks = StackedChunkLoader.loadChunksFromPayload(Minecraft.getInstance().level, payload);
+        for (StackedChunk chunk: levelChunks) {
+            StackedChunkStorage.put(chunk);
+            StackedChunkRenderer.addStackedChunk(chunk);
+        }
     }
 
 }
