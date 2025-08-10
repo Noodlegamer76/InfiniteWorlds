@@ -1,5 +1,6 @@
 package com.noodlegamer76.infiniteworlds.item;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import com.noodlegamer76.infiniteworlds.level.chunk.render.ChunkRenderSection;
@@ -7,10 +8,9 @@ import com.noodlegamer76.infiniteworlds.level.chunk.render.StackedChunkRenderer;
 import com.noodlegamer76.infiniteworlds.level.chunk.storage.StackedChunkStorage;
 import com.noodlegamer76.infiniteworlds.level.chunk.util.FillChunk;
 import com.noodlegamer76.infiniteworlds.network.stackedchunk.StackedChunkPayload;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.ViewArea;
-import net.minecraft.client.renderer.chunk.RenderChunkRegion;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -29,14 +29,22 @@ public class TestItem extends Item {
 
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
+        if (level.isClientSide) {
+            System.out.println((StackedChunkStorage.getChunks().size()));
+            RenderSystem.recordRenderCall(() -> {
+                System.out.println(StackedChunkRenderer.getStackedSections().size());
+            });
+        }
+        if (level.isClientSide && !player.isShiftKeyDown()) {
+            StackedChunkRenderer.clear();
+        }
         if (!level.isClientSide() && !player.isShiftKeyDown()) {
             StackedChunkStorage.clear();
-            StackedChunkRenderer.clear();
             List<StackedChunk> chunks = new ArrayList<>();
-            for (int x = 0; x < 7; x++) {
-                for (int y = 0; y < 40; y++) {
-                    for (int z = 0; z < 7; z++) {
-                        StackedChunk chunk = StackedChunkStorage.getOrCreate(level, new StackedChunkPos(x, y + 1000, z));
+            for (int x = 0; x < 5; x++) {
+                for (int y = 0; y < 5; y++) {
+                    for (int z = 0; z < 5; z++) {
+                        StackedChunk chunk = StackedChunkStorage.getOrCreate(level, new StackedChunkPos(x - 1, y + 20, z - 1));
                         FillChunk.fillChunkWithDirt(chunk);
                         chunks.add(chunk);
                     }
@@ -45,10 +53,10 @@ public class TestItem extends Item {
             StackedChunkPayload payload = new StackedChunkPayload(chunks);
             ((ServerPlayer) player).connection.send(payload);
         }
-        if (level.isClientSide() && player.isShiftKeyDown()) {
-            System.out.println(StackedChunkStorage.getChunks().size());
-            boolean isCompiled = Minecraft.getInstance().levelRenderer.isSectionCompiled(new BlockPos(0, 16 * 20, 0));
-            System.out.println(isCompiled);
+        if (level instanceof ServerLevel serverLevel && player.isShiftKeyDown()) {
+            for (StackedChunk chunk: StackedChunkStorage.getChunks().values()) {
+               // System.out.println(serverLevel.getBlockState(new BlockPos(chunk.getPos().x * 16, chunk.getPos().y * 16, chunk.getPos().z * 16)));
+            }
         }
         return InteractionResultHolder.success(player.getItemInHand(usedHand));
     }

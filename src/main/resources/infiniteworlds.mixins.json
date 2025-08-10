@@ -9,12 +9,18 @@
     "RenderChunkRegionMixin",
     "RenderRegionCacheMixin",
     "ViewAreaMixin",
-    "accessor.LevelRendererAccessor"
+    "accessor.LevelRendererAccessor",
+    "accessor.SectionRenderDispatcherAccessor",
+    "accessor.VertexBufferAccessor"
   ],
   "minVersion": "0.8",
   "mixins": [
     "BlockCollisionsMixin",
     "ChunkAccessMixin",
-    "LevelMixin"
+    "LevelMixin",
+    "ServerChunkCacheMixin",
+    "ServerGamePacketListenerImplMixin",
+    "accessor.MinecraftServerAccessor",
+    "accessor.ServerLevelAccessor"
   ]
 }

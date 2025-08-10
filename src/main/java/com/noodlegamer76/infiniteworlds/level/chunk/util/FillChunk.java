@@ -8,7 +8,7 @@ import net.minecraft.world.level.chunk.LevelChunkSection;
 public class FillChunk {
 
     public static void fillChunkWithDirt(LevelChunk chunk) {
-        BlockState dirt = Blocks.GREEN_STAINED_GLASS.defaultBlockState();
+        BlockState dirt = Blocks.DIRT.defaultBlockState();
 
         LevelChunkSection[] sections = chunk.getSections();
         for (LevelChunkSection section : sections) {

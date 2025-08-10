@@ -13,11 +13,17 @@ import java.util.List;
 public class StackedChunkHandler {
 
     public static void handle(StackedChunkPayload payload, IPayloadContext context) {
-        List<StackedChunk> levelChunks = StackedChunkLoader.loadChunksFromPayload(Minecraft.getInstance().level, payload);
-        for (StackedChunk chunk: levelChunks) {
-            StackedChunkStorage.put(chunk);
-            StackedChunkRenderer.addStackedChunk(chunk);
-        }
+        Minecraft mc = Minecraft.getInstance();
+        mc.execute(() -> {
+            ClientLevel clientLevel = mc.level;
+            if (clientLevel == null) return;
+
+            List<StackedChunk> chunks = StackedChunkLoader.loadChunksFromPayload(clientLevel, payload);
+            for (StackedChunk chunk : chunks) {
+                StackedChunkStorage.put(chunk);
+                StackedChunkRenderer.addStackedChunk(chunk.getPos());
+            }
+        });
     }
 
 }

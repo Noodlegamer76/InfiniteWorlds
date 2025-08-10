@@ -4,9 +4,12 @@ import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import com.noodlegamer76.infiniteworlds.level.chunk.render.ChunkRenderSection;
 import com.noodlegamer76.infiniteworlds.level.chunk.render.StackedChunkRenderer;
+import com.noodlegamer76.infiniteworlds.level.chunk.storage.StackedChunkStorage;
+import com.noodlegamer76.infiniteworlds.mixin.accessor.VertexBufferAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectListIterator;
 import net.minecraft.client.Minecraft;
@@ -17,6 +20,7 @@ import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.neoforged.neoforge.client.ClientHooks;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Final;
@@ -25,9 +29,12 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import javax.annotation.Nullable;
-import java.util.Map;
+import java.util.*;
+
+import static com.noodlegamer76.infiniteworlds.InfiniteWorlds.LOGGER;
 
 @Mixin(targets = "net.minecraft.client.renderer.LevelRenderer")
 public abstract class LevelRendererMixin {
@@ -55,86 +62,68 @@ public abstract class LevelRendererMixin {
         RenderSystem.assertOnRenderThread();
         renderType.setupRenderState();
 
+        ShaderInstance shaderInstance = RenderSystem.getShader();
+        shaderInstance.setDefaultUniforms(VertexFormat.Mode.QUADS, frustrumMatrix, projectionMatrix, this.minecraft.getWindow());
+        shaderInstance.apply();
+        Uniform uniform = shaderInstance.CHUNK_OFFSET;
+
+        var sections = StackedChunkRenderer.getStackedSections().values();
+
         if (renderType == RenderType.translucent()) {
-            this.minecraft.getProfiler().push("translucent_sort");
-            double d0 = x - this.yTransparentOld;
-            double d1 = y - this.yTransparentOld;
-            double d2 = z - this.zTransparentOld;
-            if (d0 * d0 + d1 * d1 + d2 * d2 > (double) 1.0F) {
-                int i = SectionPos.posToSectionCoord(x);
-                int j = SectionPos.posToSectionCoord(y);
-                int k = SectionPos.posToSectionCoord(z);
-                boolean flag = i != SectionPos.posToSectionCoord(this.xTransparentOld) || k != SectionPos.posToSectionCoord(this.zTransparentOld) || j != SectionPos.posToSectionCoord(this.yTransparentOld);
-                this.xTransparentOld = x;
-                this.yTransparentOld = y;
-                this.zTransparentOld = z;
-                int l = 0;
+            List<ChunkRenderSection> sortedSections = new ArrayList<>(sections);
+            sortedSections.sort(Comparator.comparingDouble(ChunkRenderSection::getCachedDistance).reversed());
 
-                for (ChunkRenderSection section : StackedChunkRenderer.getStackedSections().values()) {
-                    if (sectionRenderDispatcher == null) continue;
-                    if (l < 15 && (flag || section.getRenderSection().isAxisAlignedWith(i, j, k)) && section.getRenderSection().resortTransparency(renderType, this.sectionRenderDispatcher)) {
-                        ++l;
-                    }
-                }
-            }
-        }
+            for (ChunkRenderSection section : sortedSections) {
+                SectionRenderDispatcher.RenderSection renderSection = section.getRenderSection();
+                if (renderSection.getCompiled().isEmpty(renderType)) continue;
 
-        this.minecraft.getProfiler().pop();
+                VertexBuffer vb = renderSection.getBuffer(renderType);
+                BlockPos pos = renderSection.getOrigin();
 
-        this.minecraft.getProfiler().push("filterempty");
-        this.minecraft.getProfiler().popPush(() -> "render_" + renderType);
-        boolean flag1 = renderType != RenderType.translucent();
-        ObjectListIterator<SectionRenderDispatcher.RenderSection> objectlistiterator = this.visibleSections.listIterator(flag1 ? 0 : this.visibleSections.size());
-        ShaderInstance shaderinstance = RenderSystem.getShader();
-        shaderinstance.setDefaultUniforms(VertexFormat.Mode.QUADS, frustrumMatrix, projectionMatrix, this.minecraft.getWindow());
-        shaderinstance.apply();
-        Uniform uniform = shaderinstance.CHUNK_OFFSET;
-
-        while(true) {
-            if (flag1) {
-                if (!objectlistiterator.hasNext()) {
-                    break;
-                }
-            } else if (!objectlistiterator.hasPrevious()) {
-                break;
-            }
-
-            SectionRenderDispatcher.RenderSection section = flag1 ? objectlistiterator.next() : objectlistiterator.previous();
-            if (!section.getCompiled().isEmpty(renderType)) {
-                VertexBuffer vertexbuffer = section.getBuffer(renderType);
-                BlockPos blockpos = section.getOrigin();
                 if (uniform != null) {
-                    uniform.set((float)((double)blockpos.getX() - x), (float)((double)blockpos.getY() - y), (float)((double)blockpos.getZ() - z));
+                    uniform.set((float)(pos.getX() - x), (float)(pos.getY() - y), (float)(pos.getZ() - z));
                     uniform.upload();
                 }
 
-                vertexbuffer.bind();
-                vertexbuffer.draw();
+                try {
+                    if (((VertexBufferAccessor) vb).getMode() == null) continue;
+                    vb.bind();
+                    vb.draw();
+                } catch (Throwable t) {
+                    LOGGER.warn("Skipping draw of invalid vertex buffer for section {}: {}", renderSection.getOrigin(), t.toString());
+                }
             }
-        }
+        } else {
+            for (ChunkRenderSection section : sections) {
+                SectionRenderDispatcher.RenderSection renderSection = section.getRenderSection();
+                if (renderSection.getCompiled().isEmpty(renderType)) continue;
 
-        for (Map.Entry<StackedChunkPos, ChunkRenderSection> entry : StackedChunkRenderer.getStackedSections().entrySet()) {
-            SectionRenderDispatcher.RenderSection section = entry.getValue().getRenderSection();
-            if (section.getCompiled().isEmpty(renderType)) continue;
-            VertexBuffer vb = section.getBuffer(renderType);
-            uniform.set(
-                    (float) (section.getOrigin().getX() - x),
-                    (float) (section.getOrigin().getY() - y),
-                    (float) (section.getOrigin().getZ() - z)
-            );
-            uniform.upload();
-            vb.bind();
-            vb.draw();
+                VertexBuffer vb = renderSection.getBuffer(renderType);
+                BlockPos pos = renderSection.getOrigin();
+
+                if (uniform != null) {
+                    uniform.set((float)(pos.getX() - x), (float)(pos.getY() - y), (float)(pos.getZ() - z));
+                    uniform.upload();
+                }
+
+                try {
+                    if (((VertexBufferAccessor) vb).getMode() == null) continue;
+                    vb.bind();
+                    vb.draw();
+                } catch (Throwable t) {
+                    LOGGER.warn("Skipping draw of invalid vertex buffer for section {}: {}", renderSection.getOrigin(), t.toString());
+                }
+            }
         }
 
         if (uniform != null) {
             uniform.set(0.0F, 0.0F, 0.0F);
         }
 
-        shaderinstance.clear();
+        shaderInstance.clear();
         VertexBuffer.unbind();
         this.minecraft.getProfiler().pop();
-        ClientHooks.dispatchRenderStage(renderType, (LevelRenderer) (Object) this, frustrumMatrix, projectionMatrix, ticks, this.minecraft.gameRenderer.getMainCamera(), getFrustum());
+        //ClientHooks.dispatchRenderStage(renderType, (LevelRenderer)(Object)this, frustrumMatrix, projectionMatrix, ticks, this.minecraft.gameRenderer.getMainCamera(), getFrustum());
         renderType.clearRenderState();
     }
 }

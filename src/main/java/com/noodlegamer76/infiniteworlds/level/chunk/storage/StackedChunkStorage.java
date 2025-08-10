@@ -2,6 +2,7 @@ package com.noodlegamer76.infiniteworlds.level.chunk.storage;
 
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 
 import java.util.HashMap;
@@ -23,7 +24,11 @@ public class StackedChunkStorage {
     }
 
     public static StackedChunk getOrCreate(Level level, StackedChunkPos pos) {
-        return chunks.computeIfAbsent(pos, p -> new StackedChunk(level, p));
+        StackedChunk chunk = chunks.computeIfAbsent(pos, p -> new StackedChunk(level, p));
+        if (level instanceof ServerLevel serverLevel) {
+            serverLevel.startTickingChunk(chunk);
+        }
+        return chunk;
     }
 
     public static StackedChunk get(StackedChunkPos pos) {

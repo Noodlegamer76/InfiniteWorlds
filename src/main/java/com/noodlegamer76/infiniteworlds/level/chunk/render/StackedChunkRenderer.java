@@ -1,60 +1,64 @@
 package com.noodlegamer76.infiniteworlds.level.chunk.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.noodlegamer76.infiniteworlds.InfiniteWorlds;
-import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import com.noodlegamer76.infiniteworlds.mixin.accessor.LevelRendererAccessor;
+import com.noodlegamer76.infiniteworlds.mixin.accessor.SectionRenderDispatcherAccessor;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.chunk.RenderChunkRegion;
-import net.minecraft.client.renderer.chunk.RenderRegionCache;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
-import net.minecraft.core.SectionPos;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class StackedChunkRenderer {
-    private static final Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-    private static final Map<StackedChunkPos, ChunkRenderSection> stackedSections = new HashMap<>();
+    private static Camera camera() {
+        // Get fresh camera instance each call for safety
+        return Minecraft.getInstance().gameRenderer.getMainCamera();
+    }
+
+    private static final Map<StackedChunkPos, ChunkRenderSection> stackedSections = new ConcurrentHashMap<>();
     private static final PriorityQueue<ChunkRenderSection> dirtySections =
             new PriorityQueue<>(Comparator.comparingDouble(ChunkRenderSection::getCachedDistance));
-    private static final List<ChunkRenderSection> removedSections = new ArrayList<>();
+
+    private static final List<ChunkRenderSection> removedSections = Collections.synchronizedList(new ArrayList<>());
+    private static final Queue<StackedChunkPos> unbuilt = new ConcurrentLinkedQueue<>();
 
     private static SectionRenderDispatcher dispatcher;
     private static ClientLevel level;
     private static Vec3 lastCameraPos = Vec3.ZERO;
 
     public static void init(ClientLevel level) {
-        if (dispatcher == null) {
+        if (dispatcher == null || ((SectionRenderDispatcherAccessor) dispatcher).isClosed()) {
             LevelRenderer renderer = Minecraft.getInstance().levelRenderer;
             dispatcher = ((LevelRendererAccessor) renderer).getSectionRenderDispatcher();
             StackedChunkRenderer.level = level;
         }
     }
 
-    public static void addRenderSection(ChunkRenderSection section) {
-        stackedSections.put(section.getPos(), section);
-        markDirty(section.getPos());
-    }
-
     public static void clear() {
-        for (ChunkRenderSection section : stackedSections.values()) {
-            section.setRemoved(true);
-            removedSections.add(section);
-            dirtySections.remove(section);
+        synchronized (removedSections) {
+            for (ChunkRenderSection section : stackedSections.values()) {
+                section.setRemoved(true);
+                removedSections.add(section);
+                dirtySections.remove(section);
+            }
         }
+        stackedSections.clear();
+        removeAllRemovedChunks();
     }
 
     public static void removeStackedChunk(StackedChunkPos pos) {
         ChunkRenderSection section = stackedSections.remove(pos);
         if (section != null) {
             section.setRemoved(true);
-            removedSections.add(section);
+            synchronized (removedSections) {
+                removedSections.add(section);
+            }
         }
     }
 
@@ -66,43 +70,81 @@ public class StackedChunkRenderer {
     }
 
     public static void processChunks() {
-        StackedChunkRenderer.removeAllRemovedChunks();
+        removeAllRemovedChunks();
+        buildUnbuiltSections();
 
-        Vec3 camPos = camera.getPosition();
+        Vec3 camPos = camera().getPosition();
         if (!camPos.equals(lastCameraPos)) {
             lastCameraPos = camPos;
 
-            List<ChunkRenderSection> tempList = new ArrayList<>(dirtySections);
+            List<ChunkRenderSection> tempList;
+            synchronized (dirtySections) {
+                tempList = new ArrayList<>(dirtySections);
+            }
             for (ChunkRenderSection section : tempList) {
                 section.updateDistance(camPos);
             }
-            dirtySections.clear();
-            dirtySections.addAll(tempList);
-
+            synchronized (dirtySections) {
+                dirtySections.clear();
+                dirtySections.addAll(tempList);
+            }
         }
 
-        StackedChunkRenderer.rebuildNextDirtyChunk();
+        int rebuildBudget = 1;
+        while (rebuildBudget-- > 0) {
+            boolean rebuilt = rebuildNextDirtyChunk();
+            if (!rebuilt) break;
+        }
     }
 
-    public static void rebuildNextDirtyChunk() {
-        ChunkRenderSection section = dirtySections.poll();
-        if (section != null) {
-            if (section.isRemoved()) {
-                InfiniteWorlds.LOGGER.error("Trying to rebuild removed chunk: {}, Removed chunks shouldn't be in the queue", section.getPos());
-                return;
-            }
-            if (!stackedSections.containsValue(section)) {
-                stackedSections.remove(section.getPos());
-                section.close();
-                return;
-            }
-            section.rebuild(level);
+    /**
+     * @return true if rebuilt a chunk, false if none available
+     */
+    public static boolean rebuildNextDirtyChunk() {
+        ChunkRenderSection section;
+        synchronized (dirtySections) {
+            section = dirtySections.poll();
+        }
+        if (section == null) return false;
+
+        if (section.isRemoved()) {
+            InfiniteWorlds.LOGGER.error("Trying to rebuild removed chunk: {}, Removed chunks shouldn't be in the queue", section.getPos());
+            return true;
+        }
+        if (!stackedSections.containsValue(section)) {
+            stackedSections.remove(section.getPos());
+            section.close();
+            return true;
+        }
+
+        section.rebuild(level);
+        return true;
+    }
+
+    public static void buildUnbuiltSections() {
+        if (dispatcher == null) return;
+        StackedChunkPos pos;
+        while ((pos = unbuilt.poll()) != null) {
+            int originX = pos.x * 16;
+            int originY = pos.y * 16;
+            int originZ = pos.z * 16;
+
+            SectionRenderDispatcher.RenderSection renderSection = dispatcher.new RenderSection(0, originX, originY, originZ);
+            renderSection.setOrigin(originX, originY, originZ);
+
+            ChunkRenderSection chunkRenderSection = new ChunkRenderSection(pos, renderSection);
+            stackedSections.put(pos, chunkRenderSection);
+
+            markDirty(pos);
         }
     }
 
     public static void removeAllRemovedChunks() {
-        List<ChunkRenderSection> sectionsToRemove = new ArrayList<>(removedSections);
-        removedSections.clear();
+        List<ChunkRenderSection> sectionsToRemove;
+        synchronized (removedSections) {
+            sectionsToRemove = new ArrayList<>(removedSections);
+            removedSections.clear();
+        }
 
         for (ChunkRenderSection section : sectionsToRemove) {
             dirtySections.remove(section);
@@ -111,31 +153,29 @@ public class StackedChunkRenderer {
         }
     }
 
-    public static void addStackedChunk(StackedChunk chunk) {
-        StackedChunkPos pos = chunk.getPos();
-
-        int originX = pos.x * 16;
-        int originY = pos.y * 16;
-        int originZ = pos.z * 16;
-
-        SectionRenderDispatcher.RenderSection renderSection = dispatcher.new RenderSection(0, originX, originY, originZ);
-        renderSection.setOrigin(originX, originY, originZ);
-
-        ChunkRenderSection chunkRenderSection = new ChunkRenderSection(pos, renderSection);
-        stackedSections.put(pos, chunkRenderSection);
-
-        markDirty(pos);
+    public static void addStackedChunk(StackedChunkPos pos) {
+        if (!unbuilt.contains(pos)) {
+            unbuilt.add(pos);
+        }
     }
 
     public static Map<StackedChunkPos, ChunkRenderSection> getStackedSections() {
         return stackedSections;
     }
 
-    public static Queue<ChunkRenderSection> getDirtySections() {
+    public static PriorityQueue<ChunkRenderSection> getDirtySections() {
         return dirtySections;
+    }
+
+    public static List<ChunkRenderSection> getRemovedSections() {
+        return removedSections;
     }
 
     public static SectionRenderDispatcher getDispatcher() {
         return dispatcher;
+    }
+
+    public static Queue<StackedChunkPos> getUnbuilt() {
+        return unbuilt;
     }
 }

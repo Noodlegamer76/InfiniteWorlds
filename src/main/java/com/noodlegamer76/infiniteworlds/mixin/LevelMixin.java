@@ -5,10 +5,12 @@ import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import com.noodlegamer76.infiniteworlds.level.chunk.render.StackedChunkRenderer;
 import com.noodlegamer76.infiniteworlds.level.chunk.storage.StackedChunkStorage;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.neoforged.neoforge.common.util.BlockSnapshot;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,6 +18,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.ArrayList;
 
 @Mixin(Level.class)
 public abstract class LevelMixin {
@@ -29,6 +33,30 @@ public abstract class LevelMixin {
     @Shadow public abstract void onBlockStateChange(BlockPos pos, BlockState blockState, BlockState newState);
 
     @Shadow @Final public boolean isClientSide;
+
+    @Shadow public abstract BlockState getBlockState(BlockPos pos);
+
+    @Shadow public abstract boolean setBlock(BlockPos pos, BlockState state, int flags, int recursionLeft);
+
+    @Shadow public boolean captureBlockSnapshots;
+
+    @Shadow public ArrayList<BlockSnapshot> capturedBlockSnapshots;
+
+    @Shadow @Final private ResourceKey<Level> dimension;
+
+    @Inject(
+            method = "getChunkAt",
+            at = @At("HEAD"),
+            cancellable = true
+    )
+    public void getChunkAtFix(BlockPos pos, CallbackInfoReturnable<LevelChunk> cir) {
+        StackedChunkPos chunkPos = new StackedChunkPos(pos);
+        StackedChunk chunk = StackedChunkStorage.get(chunkPos);
+
+        if (chunk != null) {
+            cir.setReturnValue(chunk);
+        }
+    }
 
     @Inject(
             method = "getBlockState",
@@ -54,22 +82,31 @@ public abstract class LevelMixin {
         StackedChunk chunk = StackedChunkStorage.get(chunkPos);
 
         if (chunk != null) {
-            BlockState oldState = chunk.getBlockState(pos);
-            if (oldState == state) {
-                cir.setReturnValue(false);
-                return;
+            Level level = (Level) (Object) this;
+            BlockSnapshot blockSnapshot = null;
+            if (this.captureBlockSnapshots && !this.isClientSide) {
+                blockSnapshot = BlockSnapshot.create(dimension, level, pos, flags);
+                this.capturedBlockSnapshots.add(blockSnapshot);
             }
 
+            BlockState old = getBlockState(pos);
+            old.getLightEmission(level, pos);
+            old.getLightBlock(level, pos);
             chunk.setBlockState(pos, state, (flags & 64) != 0);
+            if (state == null) {
+                if (blockSnapshot != null) {
+                    this.capturedBlockSnapshots.remove(blockSnapshot);
+                }
 
-           //if (isClientSide) {
-           //    StackedChunkRenderer.markDirty(chunkPos);
-           //}
+                cir.setReturnValue(false);
+            } else {
+                this.getBlockState(pos);
+                if (blockSnapshot == null) {
+                    this.markAndNotifyBlock(pos, chunk, state, state, flags, recursionLeft);
+                }
 
-            this.sendBlockUpdated(pos, oldState, state, flags);
-            this.onBlockStateChange(pos, oldState, state);
-
-            cir.setReturnValue(true);
+                cir.setReturnValue(true);
+            }
         }
 
     }
