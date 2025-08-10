@@ -20,6 +20,7 @@
     "LevelMixin",
     "ServerChunkCacheMixin",
     "ServerGamePacketListenerImplMixin",
+    "ServerLevelMixin",
     "accessor.MinecraftServerAccessor",
     "accessor.ServerLevelAccessor"
   ]

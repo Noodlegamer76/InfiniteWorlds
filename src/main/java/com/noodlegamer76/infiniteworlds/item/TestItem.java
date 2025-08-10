@@ -1,15 +1,11 @@
 package com.noodlegamer76.infiniteworlds.item;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
-import com.noodlegamer76.infiniteworlds.level.chunk.render.ChunkRenderSection;
-import com.noodlegamer76.infiniteworlds.level.chunk.render.StackedChunkRenderer;
 import com.noodlegamer76.infiniteworlds.level.chunk.storage.StackedChunkStorage;
 import com.noodlegamer76.infiniteworlds.level.chunk.util.FillChunk;
 import com.noodlegamer76.infiniteworlds.network.stackedchunk.StackedChunkPayload;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -30,28 +26,25 @@ public class TestItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
         if (level.isClientSide) {
-            System.out.println((StackedChunkStorage.getChunks().size()));
-            RenderSystem.recordRenderCall(() -> {
-                System.out.println(StackedChunkRenderer.getStackedSections().size());
-            });
         }
         if (level.isClientSide && !player.isShiftKeyDown()) {
-            StackedChunkRenderer.clear();
         }
         if (!level.isClientSide() && !player.isShiftKeyDown()) {
-            StackedChunkStorage.clear();
-            List<StackedChunk> chunks = new ArrayList<>();
-            for (int x = 0; x < 5; x++) {
-                for (int y = 0; y < 5; y++) {
-                    for (int z = 0; z < 5; z++) {
-                        StackedChunk chunk = StackedChunkStorage.getOrCreate(level, new StackedChunkPos(x - 1, y + 20, z - 1));
-                        FillChunk.fillChunkWithDirt(chunk);
-                        chunks.add(chunk);
-                    }
-                }
-            }
-            StackedChunkPayload payload = new StackedChunkPayload(chunks);
-            ((ServerPlayer) player).connection.send(payload);
+            ServerLevel parent = (ServerLevel) level;
+            MinecraftServer server = parent.getServer();
+           StackedChunkStorage.clear();
+           List<StackedChunk> chunks = new ArrayList<>();
+           for (int x = 0; x < 5; x++) {
+               for (int y = 0; y < 5; y++) {
+                   for (int z = 0; z < 5; z++) {
+                       StackedChunk chunk = StackedChunkStorage.getOrCreate(level, new StackedChunkPos(x - 1, y + 20, z - 1));
+                       FillChunk.fillChunkWithDirt(chunk);
+                       chunks.add(chunk);
+                   }
+               }
+           }
+           StackedChunkPayload payload = new StackedChunkPayload(chunks);
+           ((ServerPlayer) player).connection.send(payload);
         }
         if (level instanceof ServerLevel serverLevel && player.isShiftKeyDown()) {
             for (StackedChunk chunk: StackedChunkStorage.getChunks().values()) {
