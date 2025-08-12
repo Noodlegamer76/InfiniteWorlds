@@ -30,10 +30,7 @@ public class StackedChunkLoader {
             StackedChunk chunk = new StackedChunk(clientLevel, pos);
 
             FriendlyByteBuf chunkBuffer = new FriendlyByteBuf(Unpooled.wrappedBuffer(chunkData));
-            LevelChunkSection[] sections = chunk.getSections();
-            for (int j = 0; j < sections.length; j++) {
-                sections[j].read(chunkBuffer);
-            }
+            chunk.getSection(0).read(chunkBuffer);
             chunkBuffer.release();
 
             chunks.add(chunk);

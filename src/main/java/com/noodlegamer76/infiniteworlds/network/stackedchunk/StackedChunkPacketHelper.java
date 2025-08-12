@@ -11,23 +11,21 @@ import java.util.List;
 
 public class StackedChunkPacketHelper {
 
-    public static byte[] serializeChunkData(StackedChunk chunk) {
+    public static byte[] serializeChunkData(StackedChunkInfo chunk) {
         return serializeChunkData(List.of(chunk));
     }
 
-    public static byte[] serializeChunkData(List<StackedChunk> chunks) {
+    public static byte[] serializeChunkData(List<StackedChunkInfo> chunks) {
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(chunks.size());
 
-        for (StackedChunk chunk : chunks) {
-            buffer.writeInt(chunk.getPos().x);
-            buffer.writeInt(chunk.getPos().y);
-            buffer.writeInt(chunk.getPos().z);
+        for (StackedChunkInfo chunk : chunks) {
+            buffer.writeInt(chunk.pos().x);
+            buffer.writeInt(chunk.pos().y);
+            buffer.writeInt(chunk.pos().z);
 
             FriendlyByteBuf chunkBuffer = new FriendlyByteBuf(Unpooled.buffer());
-            for (LevelChunkSection section : chunk.getSections()) {
-                section.write(chunkBuffer);
-            }
+            chunk.chunk().getSection(chunk.offset()).write(chunkBuffer);
 
             buffer.writeVarInt(chunkBuffer.readableBytes());
             buffer.writeBytes(chunkBuffer);

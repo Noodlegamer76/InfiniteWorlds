@@ -2,6 +2,7 @@ package com.noodlegamer76.infiniteworlds.network.stackedchunk;
 
 import com.noodlegamer76.infiniteworlds.InfiniteWorlds;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
+import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -25,11 +26,11 @@ public class StackedChunkPayload implements CustomPacketPayload {
                     StackedChunkPayload::decode
             );
 
-    public StackedChunkPayload(StackedChunk levelChunk) {
+    public StackedChunkPayload(StackedChunkInfo levelChunk) {
         this.chunkDataBuffer = StackedChunkPacketHelper.serializeChunkData(levelChunk);
     }
 
-    public StackedChunkPayload(List<StackedChunk> levelChunks) {
+    public StackedChunkPayload(List<StackedChunkInfo> levelChunks) {
         this.chunkDataBuffer = StackedChunkPacketHelper.serializeChunkData(levelChunks);
     }
 

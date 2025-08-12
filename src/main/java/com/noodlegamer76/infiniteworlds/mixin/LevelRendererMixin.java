@@ -2,8 +2,10 @@ package com.noodlegamer76.infiniteworlds.mixin;
 
 import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.math.Axis;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import com.noodlegamer76.infiniteworlds.level.chunk.render.ChunkRenderSection;
@@ -12,6 +14,7 @@ import com.noodlegamer76.infiniteworlds.level.chunk.storage.StackedChunkStorage;
 import com.noodlegamer76.infiniteworlds.mixin.accessor.VertexBufferAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectListIterator;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.RenderType;
@@ -65,6 +68,7 @@ public abstract class LevelRendererMixin {
         ShaderInstance shaderInstance = RenderSystem.getShader();
         shaderInstance.setDefaultUniforms(VertexFormat.Mode.QUADS, frustrumMatrix, projectionMatrix, this.minecraft.getWindow());
         shaderInstance.apply();
+
         Uniform uniform = shaderInstance.CHUNK_OFFSET;
 
         var sections = StackedChunkRenderer.getStackedSections().values();
@@ -74,6 +78,7 @@ public abstract class LevelRendererMixin {
             sortedSections.sort(Comparator.comparingDouble(ChunkRenderSection::getCachedDistance).reversed());
 
             for (ChunkRenderSection section : sortedSections) {
+                shaderInstance.apply();
                 SectionRenderDispatcher.RenderSection renderSection = section.getRenderSection();
                 if (renderSection.getCompiled().isEmpty(renderType)) continue;
 
@@ -95,6 +100,7 @@ public abstract class LevelRendererMixin {
             }
         } else {
             for (ChunkRenderSection section : sections) {
+                shaderInstance.apply();
                 SectionRenderDispatcher.RenderSection renderSection = section.getRenderSection();
                 if (renderSection.getCompiled().isEmpty(renderType)) continue;
 
@@ -126,4 +132,7 @@ public abstract class LevelRendererMixin {
         //ClientHooks.dispatchRenderStage(renderType, (LevelRenderer)(Object)this, frustrumMatrix, projectionMatrix, ticks, this.minecraft.gameRenderer.getMainCamera(), getFrustum());
         renderType.clearRenderState();
     }
+
+
+
 }

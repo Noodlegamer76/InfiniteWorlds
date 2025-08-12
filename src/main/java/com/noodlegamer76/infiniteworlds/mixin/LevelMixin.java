@@ -24,8 +24,6 @@ import java.util.ArrayList;
 @Mixin(Level.class)
 public abstract class LevelMixin {
 
-    @Shadow public abstract LevelChunk getChunkAt(BlockPos pos);
-
     @Shadow public abstract void markAndNotifyBlock(BlockPos p_46605_, @Nullable LevelChunk levelchunk, BlockState blockstate, BlockState p_46606_, int p_46607_, int p_46608_);
 
     @Shadow public abstract void sendBlockUpdated(BlockPos blockPos, BlockState blockState, BlockState blockState1, int i);
@@ -44,33 +42,32 @@ public abstract class LevelMixin {
 
     @Shadow @Final private ResourceKey<Level> dimension;
 
-    @Inject(
-            method = "getChunkAt",
-            at = @At("HEAD"),
-            cancellable = true
-    )
-    public void getChunkAtFix(BlockPos pos, CallbackInfoReturnable<LevelChunk> cir) {
-        StackedChunkPos chunkPos = new StackedChunkPos(pos);
-        StackedChunk chunk = StackedChunkStorage.get(chunkPos);
+    @Shadow public abstract LevelChunk getChunk(int chunkX, int chunkZ);
 
-        if (chunk != null) {
-            cir.setReturnValue(chunk);
-        }
-    }
+   @Inject(method = "getChunkAt", at = @At("TAIL"), cancellable = true)
+   public void getChunkAtFix(BlockPos pos, CallbackInfoReturnable<LevelChunk> cir) {
+       StackedChunkPos chunkPos = new StackedChunkPos(pos);
+       StackedChunk chunk = StackedChunkStorage.get(chunkPos);
 
-    @Inject(
-            method = "getBlockState",
-            at = @At("HEAD"),
-            cancellable = true
-    )
-    public void getBlockStateFix(BlockPos pos, CallbackInfoReturnable<BlockState> cir) {
-        StackedChunkPos chunkPos = new StackedChunkPos(pos);
-        StackedChunk chunk = StackedChunkStorage.get(chunkPos);
+       if (chunk != null) {
+           cir.setReturnValue(chunk);
+       }
+   }
 
-        if (chunk != null) {
-            cir.setReturnValue(chunk.getBlockState(pos));
-        }
-    }
+
+   @Inject(
+           method = "getBlockState",
+           at = @At("HEAD"),
+           cancellable = true
+   )
+   public void getBlockStateFix(BlockPos pos, CallbackInfoReturnable<BlockState> cir) {
+       StackedChunkPos chunkPos = new StackedChunkPos(pos);
+       StackedChunk chunk = StackedChunkStorage.get(chunkPos);
+
+       if (chunk != null) {
+           cir.setReturnValue(chunk.getBlockState(pos));
+       }
+   }
 
     @Inject(
             method = "setBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;II)Z",

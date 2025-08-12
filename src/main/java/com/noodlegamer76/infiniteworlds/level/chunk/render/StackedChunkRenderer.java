@@ -1,7 +1,10 @@
 package com.noodlegamer76.infiniteworlds.level.chunk.render;
 
+import com.noodlegamer76.infiniteworlds.Config;
 import com.noodlegamer76.infiniteworlds.InfiniteWorlds;
+import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
+import com.noodlegamer76.infiniteworlds.level.chunk.storage.StackedChunkStorage;
 import com.noodlegamer76.infiniteworlds.mixin.accessor.LevelRendererAccessor;
 import com.noodlegamer76.infiniteworlds.mixin.accessor.SectionRenderDispatcherAccessor;
 import net.minecraft.client.Camera;
@@ -9,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
+import net.minecraft.core.SectionPos;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
@@ -17,7 +21,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class StackedChunkRenderer {
     private static Camera camera() {
-        // Get fresh camera instance each call for safety
         return Minecraft.getInstance().gameRenderer.getMainCamera();
     }
 
@@ -52,6 +55,10 @@ public class StackedChunkRenderer {
         removeAllRemovedChunks();
     }
 
+    public static ChunkRenderSection getChunkRenderSection(SectionPos pos) {
+        return stackedSections.get(new StackedChunkPos(pos.x(), pos.y(), pos.z()));
+    }
+
     public static void removeStackedChunk(StackedChunkPos pos) {
         ChunkRenderSection section = stackedSections.remove(pos);
         if (section != null) {
@@ -70,10 +77,30 @@ public class StackedChunkRenderer {
     }
 
     public static void processChunks() {
+        int yRenderDistance = Config.VERTICAL_RENDER_DISTANCE.get();
+        int renderDistance = (int) Minecraft.getInstance().levelRenderer.getLastViewDistance();
+
+        Vec3 camPos = camera().getPosition();
+        int camChunkX = (int) Math.floor(camPos.x / 16.0);
+        int camChunkY = (int) Math.floor(camPos.y / 16.0);
+        int camChunkZ = (int) Math.floor(camPos.z / 16.0);
+
+        for (StackedChunkPos pos : new ArrayList<>(stackedSections.keySet())) {
+            int dx = Math.abs(pos.x - camChunkX);
+            int dy = Math.abs(pos.y - camChunkY);
+            int dz = Math.abs(pos.z - camChunkZ);
+
+            double horizontalDist = Math.sqrt(dx * dx + dz * dz);
+
+            if (horizontalDist > renderDistance || dy > yRenderDistance) {
+                StackedChunkStorage.remove(pos);
+                removeStackedChunk(pos);
+            }
+        }
+
         removeAllRemovedChunks();
         buildUnbuiltSections();
 
-        Vec3 camPos = camera().getPosition();
         if (!camPos.equals(lastCameraPos)) {
             lastCameraPos = camPos;
 
@@ -90,16 +117,13 @@ public class StackedChunkRenderer {
             }
         }
 
-        int rebuildBudget = 1;
+        int rebuildBudget = Config.MAX_CHUNKS_RENDER_PER_TICK.get();
         while (rebuildBudget-- > 0) {
             boolean rebuilt = rebuildNextDirtyChunk();
             if (!rebuilt) break;
         }
     }
 
-    /**
-     * @return true if rebuilt a chunk, false if none available
-     */
     public static boolean rebuildNextDirtyChunk() {
         ChunkRenderSection section;
         synchronized (dirtySections) {

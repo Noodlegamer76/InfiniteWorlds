@@ -1,7 +1,9 @@
 package com.noodlegamer76.infiniteworlds.level.chunk;
 
 import com.noodlegamer76.infiniteworlds.level.chunk.render.StackedChunkRenderer;
+import com.noodlegamer76.infiniteworlds.level.dimension.storage.LayerIndexStorage;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -63,13 +65,21 @@ public class StackedChunk extends LevelChunk {
         return super.getBlockState(pos);
     }
 
-
     @Override
     public BlockState setBlockState(BlockPos pos, BlockState state, boolean isMoving) {
-        BlockState state2 = super.setBlockState(pos, state, isMoving);
-        if (getLevel().isClientSide) {
-            StackedChunkRenderer.markDirty(this.pos);
+        StackedChunkPos chunkPos = new StackedChunkPos(pos);
+        if (getLevel() instanceof ServerLevel serverLevel) {
+            LevelChunk layerChunk = LayerIndexStorage.getLayerIndexManager(serverLevel).getChunkAt(chunkPos, serverLevel);
+            if (layerChunk == null) {
+                return Blocks.VOID_AIR.defaultBlockState();
+            }
+            return layerChunk.setBlockState(pos, state, isMoving);
         }
-        return state2;
+        StackedChunkRenderer.markDirty(this.pos);
+        int x = pos.getX() & 15;
+        int y = pos.getY() & 15;
+        int z = pos.getZ() & 15;
+        LevelChunkSection section = this.getSection(0);
+        return section.setBlockState(x, y, z, state, isMoving);
     }
 }

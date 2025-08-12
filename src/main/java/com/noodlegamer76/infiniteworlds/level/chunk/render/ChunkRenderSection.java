@@ -1,6 +1,7 @@
 package com.noodlegamer76.infiniteworlds.level.chunk.render;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;

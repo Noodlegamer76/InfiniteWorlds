@@ -8,6 +8,7 @@
     "RenderChunkMixin",
     "RenderChunkRegionMixin",
     "RenderRegionCacheMixin",
+    "SectionCompilerMixin",
     "ViewAreaMixin",
     "accessor.LevelRendererAccessor",
     "accessor.SectionRenderDispatcherAccessor",
@@ -18,10 +19,12 @@
     "BlockCollisionsMixin",
     "ChunkAccessMixin",
     "LevelMixin",
+    "MappedRegistryMixin",
+    "MinecraftServerMixin",
     "ServerChunkCacheMixin",
     "ServerGamePacketListenerImplMixin",
-    "ServerLevelMixin",
     "accessor.MinecraftServerAccessor",
+    "accessor.ServerChunkCacheAccessor",
     "accessor.ServerLevelAccessor"
   ]
 }
