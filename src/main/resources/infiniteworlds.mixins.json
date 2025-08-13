@@ -18,11 +18,14 @@
   "mixins": [
     "BlockCollisionsMixin",
     "ChunkAccessMixin",
+    "LevelChunkMixin",
     "LevelMixin",
     "MappedRegistryMixin",
     "MinecraftServerMixin",
     "ServerChunkCacheMixin",
     "ServerGamePacketListenerImplMixin",
+    "accessor.BlockCollisionsAccessor",
+    "accessor.ChunkAccessAccessor",
     "accessor.MinecraftServerAccessor",
     "accessor.ServerChunkCacheAccessor",
     "accessor.ServerLevelAccessor"

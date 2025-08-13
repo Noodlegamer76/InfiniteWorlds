@@ -4,8 +4,10 @@ import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunk;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import com.noodlegamer76.infiniteworlds.level.chunk.render.StackedChunkRenderer;
 import com.noodlegamer76.infiniteworlds.level.chunk.storage.StackedChunkStorage;
+import com.noodlegamer76.infiniteworlds.level.chunk.util.ChunkUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -47,7 +49,7 @@ public abstract class LevelMixin {
    @Inject(method = "getChunkAt", at = @At("TAIL"), cancellable = true)
    public void getChunkAtFix(BlockPos pos, CallbackInfoReturnable<LevelChunk> cir) {
        StackedChunkPos chunkPos = new StackedChunkPos(pos);
-       StackedChunk chunk = StackedChunkStorage.get(chunkPos);
+       LevelChunk chunk = ChunkUtils.getLayerChunkOrClientChunk(chunkPos, (Level) (Object) this);
 
        if (chunk != null) {
            cir.setReturnValue(chunk);
@@ -62,7 +64,7 @@ public abstract class LevelMixin {
    )
    public void getBlockStateFix(BlockPos pos, CallbackInfoReturnable<BlockState> cir) {
        StackedChunkPos chunkPos = new StackedChunkPos(pos);
-       StackedChunk chunk = StackedChunkStorage.get(chunkPos);
+       LevelChunk chunk = ChunkUtils.getLayerChunkOrClientChunk(chunkPos, (Level) (Object) this);
 
        if (chunk != null) {
            cir.setReturnValue(chunk.getBlockState(pos));
@@ -76,7 +78,7 @@ public abstract class LevelMixin {
     )
     public void setBlockStateFix(BlockPos pos, BlockState state, int flags, int recursionLeft, CallbackInfoReturnable<Boolean> cir) {
         StackedChunkPos chunkPos = new StackedChunkPos(pos);
-        StackedChunk chunk = StackedChunkStorage.get(chunkPos);
+        LevelChunk chunk = ChunkUtils.getLayerChunkOrClientChunk(chunkPos, (Level) (Object) this);
 
         if (chunk != null) {
             Level level = (Level) (Object) this;

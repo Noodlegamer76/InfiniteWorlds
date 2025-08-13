@@ -20,7 +20,7 @@ public class LoadUtils {
         LayerIndexManager manager = LayerIndexStorage.getLayerIndexManager(baseLevel);
         ServerLevel layerLevel = manager.layerLevel;
         ServerChunkCache cache = layerLevel.getChunkSource();
-        LayerIndex layerIndex = manager.savedData.getLayer(basePos);
+        LayerIndex layerIndex = manager.savedData.getAdjustedLayer(basePos, layerLevel);
 
         if (layerIndex == null) {
             return;
@@ -39,7 +39,7 @@ public class LoadUtils {
         LayerIndexManager manager = LayerIndexStorage.getLayerIndexManager(baseLevel);
         ServerLevel layerLevel = manager.layerLevel;
         ServerChunkCache cache = layerLevel.getChunkSource();
-        LayerIndex layerIndex = manager.savedData.getLayer(basePos);
+        LayerIndex layerIndex = manager.savedData.getAdjustedLayer(basePos, layerLevel);
 
         if (layerIndex == null) {
             return;

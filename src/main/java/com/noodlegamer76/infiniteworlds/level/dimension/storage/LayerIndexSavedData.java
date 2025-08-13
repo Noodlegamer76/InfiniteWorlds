@@ -77,8 +77,18 @@ public class LayerIndexSavedData extends SavedData {
         setDirty();
     }
 
+    //Clamps the key to a multiple of the world height with an offset to match minimum build height
     @Nullable
-    public LayerIndex getLayer(StackedChunkPos key) {
-        return layerMap.get(key);
+    public LayerIndex getAdjustedLayer(StackedChunkPos key, ServerLevel levelForHeight) {
+        int sectionsPerLevel = levelForHeight.getSectionsCount();
+        int minSectionY = levelForHeight.getMinSection();
+
+        int sectionY = key.y;
+
+        int relativeY = sectionY - minSectionY;
+        int baseLayerSectionY = minSectionY + (Math.floorDiv(relativeY, sectionsPerLevel)) * sectionsPerLevel;
+
+        StackedChunkPos adjusted = new StackedChunkPos(key.x, baseLayerSectionY, key.z);
+        return layerMap.get(adjusted);
     }
 }

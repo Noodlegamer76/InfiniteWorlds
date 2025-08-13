@@ -61,7 +61,7 @@ public class StackedChunk extends LevelChunk {
 
     @Override
     public BlockState getBlockState(BlockPos pos) {
-        return super.getBlockState(pos);
+        return sections[0].getBlockState(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15);
     }
 
     @Override

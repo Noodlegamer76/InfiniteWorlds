@@ -33,7 +33,7 @@ public class LayerIndexManager {
 
     @Nullable
     public LevelChunk getLoadedChunkAt(StackedChunkPos pos, ServerLevel baseLevel) {
-        LayerIndex index = savedData.getLayer(pos);
+        LayerIndex index = savedData.getAdjustedLayer(pos, layerLevel);
         if (index == null) {
             index = createNewLayerIndex(pos, baseLevel.dimensionType().height());
         }
@@ -62,5 +62,4 @@ public class LayerIndexManager {
         LayerIndexManagerSavedData.get(mainLevel).markDirty();
         return index;
     }
-
 }

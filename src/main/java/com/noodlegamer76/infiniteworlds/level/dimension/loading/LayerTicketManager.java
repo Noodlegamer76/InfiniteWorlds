@@ -49,7 +49,7 @@ public class LayerTicketManager {
             List<StackedChunkPos> chunks = getStackedChunksInAABB(playerTicketArea);
 
             for (StackedChunkPos chunk : chunks) {
-                LayerIndex index = manager.savedData.getLayer(chunk);
+                LayerIndex index = manager.savedData.getAdjustedLayer(chunk, baseLevel);
                 if (index == null) {
                     if (indicesToCreateSet.add(chunk)) {
                         indicesToCreate.add(chunk);
@@ -91,7 +91,7 @@ public class LayerTicketManager {
         while (created < CREATE_INDICES_PER_TICK && !indicesToCreate.isEmpty()) {
             StackedChunkPos pos = indicesToCreate.poll();
             indicesToCreateSet.remove(pos);
-            if (manager.savedData.getLayer(pos) == null) {
+            if (manager.savedData.getAdjustedLayer(pos, baseLevel) == null) {
                 manager.createNewLayerIndex(pos, baseLevel.dimensionType().height());
             }
             created++;
