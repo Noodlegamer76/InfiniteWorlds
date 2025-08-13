@@ -17,20 +17,26 @@ public class TickEvents {
 
     @SubscribeEvent
     public static void preTick(ServerTickEvent.Pre event) {
+        if (++tick > Integer.MAX_VALUE - 1000) tick = 0;
+
         event.getServer().getAllLevels().forEach(level -> {
             if (!level.dimension().location().toString().endsWith("_layer_1")) {
                 LayerTicketManager manager = LayerIndexStorage.getLayerIndexManager(level).ticketManager;
-                if (++tick % 20 == 0) {
+
+                if (tick % 20 == 0) {
                     try {
                         manager.updatePlayerTickets();
                     } catch (Exception e) {
                         InfiniteWorlds.LOGGER.error("Error updating player tickets for level " + level.dimension().location(), e);
                     }
                 }
+
                 manager.processQueuedTickets();
-                RenderDistanceManagers.tick(event.getServer());
             }
         });
+
+        RenderDistanceManagers.tick(event.getServer());
     }
+
 
 }

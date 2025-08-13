@@ -59,13 +59,13 @@ public class LayerIndexSavedData extends SavedData {
         for (Map.Entry<StackedChunkPos, LayerIndex> entry : layerMap.entrySet()) {
             LayerIndex layerIndex = entry.getValue();
             CompoundTag layerTag = new CompoundTag();
-            layerTag.putInt("x1", layerIndex.mainPos.x);
-            layerTag.putInt("y1", layerIndex.mainPos.y);
-            layerTag.putInt("z1", layerIndex.mainPos.z);
-            layerTag.putInt("x2", layerIndex.layerPos.x);
-            layerTag.putInt("y2", layerIndex.layerPos.y);
-            layerTag.putInt("z2", layerIndex.layerPos.z);
-            layerTag.putInt("sectionHeight", layerIndex.sectionHeight);
+            layerTag.putInt("x1", layerIndex.mainPos().x);
+            layerTag.putInt("y1", layerIndex.mainPos().y);
+            layerTag.putInt("z1", layerIndex.mainPos().z);
+            layerTag.putInt("x2", layerIndex.layerPos().x);
+            layerTag.putInt("y2", layerIndex.layerPos().y);
+            layerTag.putInt("z2", layerIndex.layerPos().z);
+            layerTag.putInt("sectionHeight", layerIndex.sectionHeight());
 
             layersTag.put(entry.getKey().toString(), layerTag);
         }

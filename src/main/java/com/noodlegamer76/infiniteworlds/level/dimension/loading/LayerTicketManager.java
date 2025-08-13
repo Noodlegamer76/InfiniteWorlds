@@ -26,7 +26,7 @@ public class LayerTicketManager {
     private final Set<StackedChunkPos> indicesToCreateSet = new HashSet<>();
 
     private static final int MAX_TICKETS_PER_TICK = Math.max(1, Config.MAX_CHUNKS_PER_TICK.get());
-    private static final int CREATE_INDICES_PER_TICK = 2;
+    private static final int CREATE_INDICES_PER_TICK = 100;
 
     public LayerTicketManager(ServerLevel baseLevel) {
         this.baseLevel = baseLevel;
@@ -91,7 +91,6 @@ public class LayerTicketManager {
         while (created < CREATE_INDICES_PER_TICK && !indicesToCreate.isEmpty()) {
             StackedChunkPos pos = indicesToCreate.poll();
             indicesToCreateSet.remove(pos);
-            // double-check not present
             if (manager.savedData.getLayer(pos) == null) {
                 manager.createNewLayerIndex(pos, baseLevel.dimensionType().height());
             }
@@ -139,9 +138,9 @@ public class LayerTicketManager {
         double minDistSq = Double.MAX_VALUE;
         for (ServerPlayer player : baseLevel.getServer().getPlayerList().getPlayers()) {
             if (!player.level().dimension().equals(baseLevel.dimension())) continue;
-            double dx = player.getX() - index.mainPos.x * 16;
-            double dy = player.getY() - index.mainPos.y * 16;
-            double dz = player.getZ() - index.mainPos.z * 16;
+            double dx = player.getX() - index.mainPos().x * 16;
+            double dy = player.getY() - index.mainPos().y * 16;
+            double dz = player.getZ() - index.mainPos().z * 16;
             double distSq = dx * dx + dy * dy + dz * dz;
             if (distSq < minDistSq) minDistSq = distSq;
         }
@@ -149,11 +148,11 @@ public class LayerTicketManager {
     }
 
     public synchronized void addPlayerRegionTicket(LayerIndex index, ServerLevel baseLevel) {
-        LoadUtils.addTicketToStackedChunk(TicketType.PLAYER, index.mainPos, index.layerPos, false, baseLevel);
+        LoadUtils.addTicketToStackedChunk(TicketType.FORCED, index.mainPos(), index.layerPos(), true, baseLevel);
     }
 
     public synchronized void removePlayerRegionTicket(LayerIndex index, ServerLevel baseLevel) {
-        LoadUtils.removeTicketFromStackedChunk(TicketType.PLAYER, index.mainPos, index.layerPos, false, baseLevel);
+        LoadUtils.removeTicketFromStackedChunk(TicketType.FORCED, index.mainPos(), index.layerPos(), true, baseLevel);
     }
 
     public List<StackedChunkPos> getStackedChunksInAABB(AABB box) {
@@ -171,8 +170,11 @@ public class LayerTicketManager {
         int minSectionY = SectionPos.blockToSectionCoord((int) Math.floor(box.minY));
         int maxSectionY = SectionPos.blockToSectionCoord((int) Math.floor(box.maxY));
 
-        int baseMinY = Math.floorDiv(minSectionY, worldHeightInSections) * worldHeightInSections;
-        int baseMaxY = Math.floorDiv(maxSectionY, worldHeightInSections) * worldHeightInSections;
+        int relativeMinY = minSectionY - vanillaMinSection;
+        int relativeMaxY = maxSectionY - vanillaMinSection;
+
+        int baseMinY = vanillaMinSection + Math.floorDiv(relativeMinY, worldHeightInSections) * worldHeightInSections;
+        int baseMaxY = vanillaMinSection + Math.floorDiv(relativeMaxY, worldHeightInSections) * worldHeightInSections;
 
         if (baseMaxY < baseMinY) {
             int temp = baseMaxY;
@@ -191,6 +193,7 @@ public class LayerTicketManager {
 
         return chunks;
     }
+
 
     private boolean isVanillaBaseLayerOverlap(int baseYInSections, int heightInSections, int vanillaMinSection, int vanillaMaxSection) {
         if (heightInSections <= 0) return false;

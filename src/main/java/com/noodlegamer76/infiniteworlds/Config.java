@@ -17,19 +17,19 @@ public class Config {
 
     public static final ModConfigSpec.IntValue VERTICAL_SIMULATION_DISTANCE = BUILDER
             .comment("The vertical render distance.")
-            .defineInRange("verticalRenderDistance", 3, 0, Integer.MAX_VALUE);
+            .defineInRange("verticalRenderDistance", 8, 0, Integer.MAX_VALUE);
 
     public static final ModConfigSpec.IntValue VERTICAL_RENDER_DISTANCE = BUILDER
             .comment("The vertical simulation distance. This number is measured in (value * world height), and is centered rather than stretched.")
-            .defineInRange("verticalRenderDistance", 3, 0, Integer.MAX_VALUE);
+            .defineInRange("verticalRenderDistance", 8, 0, Integer.MAX_VALUE);
 
     public static final ModConfigSpec.IntValue MAX_CHUNKS_PER_TICK = BUILDER
             .comment("how many chunk per tick to load, excluding vanilla areas.")
-            .defineInRange("chunksPerTick", 2, 0, Integer.MAX_VALUE);
+            .defineInRange("chunksPerTick", 7, 0, Integer.MAX_VALUE);
 
     public static final ModConfigSpec.IntValue MAX_CHUNKS_RENDER_PER_TICK = BUILDER
             .comment("how many chunk per tick to render, excluding vanilla areas.")
-            .defineInRange("chunksRenderPerTick", 5, 0, Integer.MAX_VALUE);
+            .defineInRange("chunksRenderPerTick", 7, 0, Integer.MAX_VALUE);
 
     static final ModConfigSpec SPEC = BUILDER.build();
 }

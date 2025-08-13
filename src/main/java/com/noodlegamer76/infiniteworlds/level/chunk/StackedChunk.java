@@ -4,7 +4,6 @@ import com.noodlegamer76.infiniteworlds.level.chunk.render.StackedChunkRenderer;
 import com.noodlegamer76.infiniteworlds.level.dimension.storage.LayerIndexStorage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -69,7 +68,7 @@ public class StackedChunk extends LevelChunk {
     public BlockState setBlockState(BlockPos pos, BlockState state, boolean isMoving) {
         StackedChunkPos chunkPos = new StackedChunkPos(pos);
         if (getLevel() instanceof ServerLevel serverLevel) {
-            LevelChunk layerChunk = LayerIndexStorage.getLayerIndexManager(serverLevel).getChunkAt(chunkPos, serverLevel);
+            LevelChunk layerChunk = LayerIndexStorage.getLayerIndexManager(serverLevel).getLoadedChunkAt(chunkPos, serverLevel);
             if (layerChunk == null) {
                 return Blocks.VOID_AIR.defaultBlockState();
             }

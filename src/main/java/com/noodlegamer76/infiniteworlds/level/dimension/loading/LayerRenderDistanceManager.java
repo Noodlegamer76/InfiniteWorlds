@@ -27,7 +27,6 @@ public class LayerRenderDistanceManager {
         LayerTicketManager ticketManager = LayerIndexStorage.getLayerIndexManager(baseLevel).ticketManager;
         Set<LayerIndex> loadedLayers = ticketManager.getActiveTickets();
 
-        List<StackedChunkPos> filteredChunks = new ArrayList<>();
         double px = player.getX();
         double py = player.getY();
         double pz = player.getZ();
@@ -36,9 +35,11 @@ public class LayerRenderDistanceManager {
         double verticalDistanceBlocks = verticalRenderDistanceChunks * 16.0;
         double horizontalDistanceSq = horizontalDistanceBlocks * horizontalDistanceBlocks;
 
+        List<StackedChunkPos> filteredChunks = new ArrayList<>();
         for (LayerIndex layerIndex : loadedLayers) {
-            StackedChunkPos basePos = layerIndex.mainPos;
-            int sectionsCount = Math.max(1, layerIndex.sectionHeight / 16);
+            StackedChunkPos basePos = layerIndex.mainPos();
+            int sectionsCount = Math.max(1, layerIndex.sectionHeight() / 16);
+
             for (int i = 0; i < sectionsCount; i++) {
                 StackedChunkPos pos = new StackedChunkPos(basePos.x, basePos.y + i, basePos.z);
 
@@ -49,27 +50,29 @@ public class LayerRenderDistanceManager {
                 double dz = pz - pos.z * 16.0;
 
                 if (Math.abs(dy) > verticalDistanceBlocks) continue;
-
                 double hSq = dx * dx + dz * dz;
                 if (hSq > horizontalDistanceSq) continue;
 
-                filteredChunks.add(pos);
+                if (queuedSet.add(pos)) {
+                    filteredChunks.add(pos);
+                }
             }
         }
 
-        filteredChunks.sort(Comparator.comparingDouble(pos -> {
+        chunkSendQueue.addAll(filteredChunks);
+
+        List<StackedChunkPos> sortedQueue = new ArrayList<>(chunkSendQueue);
+        sortedQueue.sort(Comparator.comparingDouble(pos -> {
             double dx = px - pos.x * 16.0;
             double dy = py - pos.y * 16.0;
             double dz = pz - pos.z * 16.0;
             return dx * dx + dy * dy + dz * dz;
         }));
 
-        for (StackedChunkPos pos : filteredChunks) {
-            if (queuedSet.add(pos)) {
-                chunkSendQueue.addLast(pos);
-            }
-        }
+        chunkSendQueue.clear();
+        chunkSendQueue.addAll(sortedQueue);
     }
+
 
     public List<StackedChunkPos> pollChunksToSend() {
         List<StackedChunkPos> toSend = new ArrayList<>(SECTIONS_PER_TOLL);

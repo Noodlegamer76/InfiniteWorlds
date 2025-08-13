@@ -1,6 +1,5 @@
 package com.noodlegamer76.infiniteworlds.level.util;
 
-import com.noodlegamer76.infiniteworlds.Config;
 import com.noodlegamer76.infiniteworlds.level.chunk.StackedChunkPos;
 import com.noodlegamer76.infiniteworlds.level.dimension.LayerIndex;
 import com.noodlegamer76.infiniteworlds.level.dimension.LayerIndexManager;
@@ -27,7 +26,7 @@ public class LoadUtils {
             return;
         }
 
-        cache.addRegionTicket(type, layerIndex.layerPos, 0, value, forceTicks);
+        cache.addRegionTicket(type, layerIndex.layerPos(), 0, value, forceTicks);
     }
 
     public static <T> void removeTicketFromStackedChunk(
@@ -46,6 +45,6 @@ public class LoadUtils {
             return;
         }
 
-        cache.removeRegionTicket(type, layerIndex.layerPos, 0, value, forceTicks);
+        cache.removeRegionTicket(type, layerIndex.layerPos(), 0, value, forceTicks);
     }
 }
